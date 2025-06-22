@@ -1,11 +1,12 @@
-## Small little functional JSON parser library written in C89
+## Small little functional JSON parser library with no dependencies written in C89
 
 # Why?
-I wanted to make the project to prove I am proficient at writing parsers in C.
+I wanted to make the project to prove my profeciency in writing parsers in C.
 
 # What does it do?
 - The library provides basic JSON parsing and printing.
-- It is very barebones, lacking support for creating, mutating JSON.
+- It attempts to implement the ECMA-404 JSON specification.
+- It is very barebones, lacking support for manual creation or mutation of JSON structures.
 - It is does not support streaming style parsing.
 - It will not attempt to validate the contents of strings, outside of `\uXXXX` constants.
 - It doesn't even attempt to return adequate errors for debugging.
@@ -23,6 +24,44 @@ I wanted to make the project to prove I am proficient at writing parsers in C.
     json_print(stdout, value); // or json_print_minified(stdout, value)
     json_free(value, allocator);
 ```
+To match on the type of a ``JSONValue``, you can switch on the result of ``json_value_type``, on the value e.g.
+```c
+switch (json_value_type(value)) {
+case JSON_NULL:
+    /* ... */
+case JSON_BOOL:
+    /* ... */
+case JSON_NUMBER:
+    /* ... */
+case JSON_STRING:
+    /* ... */
+case JSON_ARRAY:
+    /* ... */
+case JSON_OBJ:
+    /* ... */
+}
+```
+The library has a whole host of functions for interacting with JSON values.
+```c
+JSONType json_value_type(const JSONValue * value);
+int json_value_as_bool(const JSONValue * value);
+double json_value_as_number(const JSONValue * value);
+const char * json_value_as_string(const JSONValue * value);
+const JSONArray * json_value_as_array(const JSONValue * value);
+const JSONObject * json_value_as_object(const JSONValue * value);
+
+const JSONValue * json_array_as_value(const JSONArray * array);
+const JSONValue * json_object_as_value(const JSONObject * obj);
+
+const JSONValue * json_array_index(const JSONArray * array, size_t index);
+
+/* can fail with NULL */
+const JSONValue * json_object_get(const JSONObject * obj, const char * key);
+
+size_t json_array_length(const JSONArray * array);
+size_t json_object_count(const JSONObject * obj);
+```
+
 
 # Custom Allocators:
 You can create a custom allocator to supply to ``json_parse`` with by directly initializing the ``JSONAllocator`` struct or using the ``json_allocator_new`` helper function.

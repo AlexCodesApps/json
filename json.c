@@ -257,7 +257,7 @@ static Token lex_rest_of_string(Ctx * ctx) {
 				goto outer;
 			}
 			default:
-					  goto error;
+					goto error;
 			}
 		}
 		new_str = ctx_reallocate(ctx, str, size, size + 1);
@@ -626,7 +626,7 @@ JSONType json_value_type(const JSONValue * value) {
 	return value->type;
 }
 
-int	json_value_as_bool(const JSONValue * value) {
+int json_value_as_bool(const JSONValue * value) {
 	return value == &json_true;
 }
 
@@ -644,6 +644,14 @@ const JSONArray * json_value_as_array(const JSONValue * value) {
 
 const JSONObject * json_value_as_object(const JSONValue * value) {
 	return (JSONObject *)value;
+}
+
+const JSONValue * json_array_as_value(const JSONArray * array) {
+	return (JSONValue *)array;
+}
+
+const JSONValue * json_object_as_value(const JSONObject * obj) {
+	return (JSONValue *)obj;
 }
 
 const JSONValue * json_array_index(const JSONArray * array, size_t index) {
@@ -712,7 +720,7 @@ end:;
 
 static void print_obj(FILE * file, const JSONObject * obj, size_t indent) {
 	fputs("{", file);
-	if (obj->count > 0)	{
+	if (obj->count > 0) {
 		size_t i = 0;
 		for (;;) {
 			char * str;

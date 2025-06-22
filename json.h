@@ -23,17 +23,44 @@ typedef struct JSONAllocator {
 	JSONAllocatorCallback callback;
 } JSONAllocator;
 
+/**
+ * @brief Creates a new JSONAllocator
+ * @param ctx serves as the closure of the allocator, and passed to the callback
+ * @param callback called to allocate/free memory
+ * @return A new JSONAllocator
+ */
 JSONAllocator json_allocator_new(void * ctx, JSONAllocatorCallback callback);
+
+/**
+ * @brief Returns a JSONAllocator wrapping the system allocator
+ * @return A new JSONAllocator
+ */
 JSONAllocator json_default_allocator(void);
+
+/**
+ * @brief tries to parse a string into a JSONValue
+ * @param string is the input that is to be parsed
+ * @param allocator is the allocator used to allocate the entire JSONValue
+ * @return a pointer to the newly allocated JSONValue, or NULL on failure
+ */
 JSONValue * json_parse(const char * string, JSONAllocator allocator);
+
+/**
+ * @brief frees an allocated JSONValue
+ * @param value is a pointer to the JSONValue being freed
+ * @param allocator is the allocator that will free the value (preferably be the same one that allocated it)
+ */
 void json_free(JSONValue * value, JSONAllocator allocator);
 
 JSONType json_value_type(const JSONValue * value);
-int	json_value_as_bool(const JSONValue * value);
+int json_value_as_bool(const JSONValue * value);
 double json_value_as_number(const JSONValue * value);
 const char * json_value_as_string(const JSONValue * value);
 const JSONArray * json_value_as_array(const JSONValue * value);
 const JSONObject * json_value_as_object(const JSONValue * value);
+
+const JSONValue * json_array_as_value(const JSONArray * array);
+const JSONValue * json_object_as_value(const JSONObject * obj);
 
 const JSONValue * json_array_index(const JSONArray * array, size_t index);
 const JSONValue * json_object_get(const JSONObject * obj, const char * key);
@@ -41,7 +68,20 @@ const JSONValue * json_object_get(const JSONObject * obj, const char * key);
 size_t json_array_length(const JSONArray * array);
 size_t json_object_count(const JSONObject * obj);
 
+/**
+ * @brief pretty prints a JSONValue
+ * @param file is the object being written to
+ * @param value is the value being printed
+ * @return the file's status as ferror(file)
+ */
 int json_print(FILE * file, const JSONValue * value);
+
+/**
+ * @brief prints a JSONValue in a compact manner
+ * @param file is the object being written to
+ * @param value is the value being printed
+ * @return the file's status as ferror(file)
+ */
 int json_print_minified(FILE * file, const JSONValue * value);
 
 #endif
