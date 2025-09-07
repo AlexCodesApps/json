@@ -46,7 +46,7 @@ JSONAllocator json_default_allocator(void);
 JSONValue * json_parse(const char * string, JSONAllocator allocator);
 
 /**
- * @brief frees an allocated JSONValue
+ * @brief frees an allocated JSONValue (avoid calling if allocated with arena-like allocator)
  * @param value is a pointer to the JSONValue being freed
  * @param allocator is the allocator that will free the value (preferably be the same one that allocated it)
  */
@@ -63,6 +63,8 @@ const JSONValue * json_array_as_value(const JSONArray * array);
 const JSONValue * json_object_as_value(const JSONObject * obj);
 
 const JSONValue * json_array_index(const JSONArray * array, size_t index);
+const JSONValue * json_object_index(const JSONObject * obj, size_t index);
+const char * json_object_index_keys(const JSONObject * obj, size_t index);
 const JSONValue * json_object_get(const JSONObject * obj, const char * key);
 
 size_t json_array_length(const JSONArray * array);

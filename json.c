@@ -658,6 +658,14 @@ const JSONValue * json_array_index(const JSONArray * array, size_t index) {
 	return array->values[index];
 }
 
+const JSONValue * json_object_index(const JSONObject * obj, size_t index) {
+	return obj->values[index];
+}
+
+const char * json_object_index_keys(const JSONObject * obj, size_t index) {
+	return obj->strings[index];
+}
+
 const JSONValue * json_object_get(const JSONObject * obj, const char * key) {
 	size_t i;
 	for (i = 0; i < obj->count; i++) {
@@ -728,7 +736,7 @@ static void print_obj(FILE * file, const JSONObject * obj, size_t indent) {
 			print_indent(file, indent + 1);
 			str = obj->strings[i];
 			print_string(file, str);
-			fputs(" : ", file);
+			fputs(": ", file);
 			print_value(file, obj->values[i], indent + 1);
 			++i;
 			if (i == obj->count) {
@@ -771,7 +779,7 @@ static void print_value(FILE * file, const JSONValue * value, size_t indent) {
 		fputs(json_value_as_bool(value) ? "true" : "false", file);
 		break;
 	case JSON_NUMBER:
-		fprintf(file, "%g", json_value_as_number(value));
+		fprintf(file, "%f", json_value_as_number(value));
 		break;
 	case JSON_STRING:
 		print_string(file, json_value_as_string(value));
@@ -804,7 +812,7 @@ void print_value_min(FILE * file, const JSONValue * value) {
 		fputs(json_value_as_bool(value) ? "true" : "false", file);
 		break;
 	case JSON_NUMBER:
-		fprintf(file, "%g", json_value_as_number(value));
+		fprintf(file, "%f", json_value_as_number(value));
 		break;
 	case JSON_STRING:
 		print_string(file, json_value_as_string(value));
