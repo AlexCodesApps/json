@@ -55,6 +55,9 @@ const JSONValue * json_object_as_value(const JSONObject * obj);
 
 const JSONValue * json_array_index(const JSONArray * array, size_t index);
 
+const JSONValue * json_object_index(const JSONObject * obj, size_t index);
+const char * json_object_index_keys(const JSONObject * obj, size_t index);
+
 /* can fail with NULL */
 const JSONValue * json_object_get(const JSONObject * obj, const char * key);
 
