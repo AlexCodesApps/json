@@ -19,7 +19,7 @@ I wanted to make the project to prove my profeciency in writing parsers in C.
     JSONAllocator allocator;
     JSONValue * value;
     allocator = json_default_allocator();
-    value = json_parse(input, allocator);
+    value = json_parse(input, -1, allocator); /* -1 for NULL terminated strings */
     assert(value);
     json_print(stdout, value); // or json_print_minified(stdout, value)
     json_free(value, allocator);

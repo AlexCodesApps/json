@@ -41,6 +41,7 @@ JSONAllocator json_default_allocator(void);
 /**
  * @brief tries to parse a string into a JSONValue
  * @param string is the input that is to be parsed
+ * @param len is the length of the input; -1 indicates a NULL terminated string
  * @param allocator is the allocator used to allocate the entire JSONValue
  * @return a pointer to the newly allocated JSONValue, or NULL on failure
  */
