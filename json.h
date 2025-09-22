@@ -2,6 +2,7 @@
 #define LIB_JSON_H
 
 #include <stdio.h>
+#include <stddef.h>
 
 typedef struct JSONValue JSONValue;
 typedef struct JSONObject JSONObject;
@@ -43,7 +44,7 @@ JSONAllocator json_default_allocator(void);
  * @param allocator is the allocator used to allocate the entire JSONValue
  * @return a pointer to the newly allocated JSONValue, or NULL on failure
  */
-JSONValue * json_parse(const char * string, JSONAllocator allocator);
+JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocator);
 
 /**
  * @brief frees an allocated JSONValue (avoid calling if allocated with arena-like allocator)

@@ -1,6 +1,5 @@
 #include "json.h"
 #include <errno.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,7 +77,8 @@ static Token error_token(void) {
 #define ERROR_TOKEN error_token()
 
 typedef struct {
-	const char * src;
+	const char * begin;
+	const char * end;
 } Lexer;
 
 typedef struct {
@@ -95,10 +95,14 @@ static void allocator_free(void * old_alloc, size_t old_size, JSONAllocator allo
 }
 
 static void allocator_free_array(void * old_alloc, size_t old_size, size_t element_size, JSONAllocator allocator) {
+	/* old_size * element_size should never be given the chance to overflow */
 	allocator.callback(allocator.ctx, old_alloc, old_size * element_size, 0);
 }
 
 static void * ctx_grow_array(Ctx * ctx, void * old_alloc, size_t old_size, size_t new_size, size_t element_size) {
+	if (((size_t)-1) / new_size < element_size) {
+		return NULL;
+	}
 	return ctx_reallocate(ctx, old_alloc, old_size * element_size, new_size * element_size);
 }
 
@@ -106,9 +110,10 @@ static void ctx_free_array(Ctx * ctx, void * old_alloc, size_t old_size, size_t 
 	allocator_free_array(old_alloc, old_size, element_size, ctx->allocator);
 }
 
-static Lexer lexer_new(const char * src) {
+static Lexer lexer_new(const char * src, ptrdiff_t len) {
 	Lexer lexer;
-	lexer.src = src;
+	lexer.begin = src;
+	lexer.end = len != -1 ? src + len : src + strlen(src);
 	return lexer;
 }
 
@@ -116,37 +121,25 @@ static int c_is_digit(char c) {
 	return '0' <= c && c <= '9';
 }
 
-static int c_is_upper(char c) {
-	return 'A' <= c && c <= 'Z';
-}
-
-static int c_is_lower(char c) {
-	return 'a' <= c && c <= 'z';
-}
-
-static int c_is_alpha(char c) {
-	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
-}
-
 static int lexer_eof(const Lexer * lexer) {
-	return *lexer->src == '\0';
+	return lexer->begin == lexer->end;
 }
 
 static char lexer_next(Lexer * lexer) {
-	return lexer_eof(lexer) ? '\0' : *(lexer->src++);
+	return lexer_eof(lexer) ? '\0' : *(lexer->begin++);
 }
 
 static char lexer_peek(Lexer * lexer) {
-	return *lexer->src;
+	return lexer_eof(lexer) ? '\0' : *lexer->begin;
 }
 
 static void lexer_advance(Lexer * lexer) {
 	if (!lexer_eof(lexer)) {
-		++lexer->src;
+		++lexer->begin;
 	}
 }
 
-static int try_append_unverified_codepoint(Ctx * ctx, char ** str, size_t * size, uint32_t codepoint) {
+static int try_append_unverified_codepoint(Ctx * ctx, char ** str, size_t * size, unsigned long codepoint) {
 	char * new_str;
 	char * start;
 	if (codepoint < 0x0020 || codepoint > 0x10FFFF) {
@@ -212,6 +205,7 @@ static Token lex_rest_of_string(Ctx * ctx) {
 	char c;
 	Token token;
 	while ((c = lexer_next(&ctx->lexer)) != '"') {
+		if (c == '\0') goto error;
 		if (c == '\\') {
 			switch (lexer_next(&ctx->lexer)) {
 			case 'b':
@@ -236,7 +230,7 @@ static Token lex_rest_of_string(Ctx * ctx) {
 				c = '/';
 				break;
 			case 'u': {
-				uint32_t codepoint = 0;
+				unsigned long codepoint = 0;
 				size_t i;
 				for (i = 0; i < 4; i++) {
 					char c = lexer_next(&ctx->lexer);
@@ -288,11 +282,11 @@ static Token lex_number(Ctx * ctx) {
 	double value;
 	Token token;
 	errno = 0;
-	value = strtod(ctx->lexer.src, &next);
+	value = strtod(ctx->lexer.begin, &next);
 	if (errno) {
 		return ERROR_TOKEN;
 	}
-	ctx->lexer.src = next;
+	ctx->lexer.begin = next;
 	token.type = TT_NUMBER;
 	token.as.number = value;
 	return token;
@@ -304,29 +298,29 @@ static Token token_new(TokenType type) {
 	return token;
 }
 
-static int starts_with(const char * prefix, const char * str) {
+static int starts_with(const char * prefix, const char * begin, const char * end) {
 	char c;
-	while ((c = *prefix) == *str) {
+	while (begin < end && (c = *prefix) == *begin) {
 		if (c == '\0') {
 			return 1;
 		}
 		++prefix;
-		++str;
+		++begin;
 	}
 	return *prefix == '\0';
 }
 
 static Token lex_identifier(Ctx * ctx) {
-	if (starts_with("null", ctx->lexer.src)) {
-		ctx->lexer.src += 4;
+	if (starts_with("null", ctx->lexer.begin, ctx->lexer.end)) {
+		ctx->lexer.begin += 4;
 		return token_new(TT_NULL);
 	}
-	if (starts_with("true", ctx->lexer.src)) {
-		ctx->lexer.src += 4;
+	if (starts_with("true", ctx->lexer.begin, ctx->lexer.end)) {
+		ctx->lexer.begin += 4;
 		return token_new(TT_TRUE);
 	}
-	if (starts_with("false", ctx->lexer.src)) {
-		ctx->lexer.src += 5;
+	if (starts_with("false", ctx->lexer.begin, ctx->lexer.end)) {
+		ctx->lexer.begin += 5;
 		return token_new(TT_FALSE);
 	}
 	return ERROR_TOKEN;
@@ -341,28 +335,28 @@ loop:
 	case '\r':
 	case '\t':
 	case '\v':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		goto loop;
 	case '{':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		return token_new(TT_LBRACE);
 	case '}':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		return token_new(TT_RBRACE);
 	case '[':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		return token_new(TT_LBRACKET);
 	case ']':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		return token_new(TT_RBRACKET);
 	case ',':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		return token_new(TT_COMMA);
 	case ':':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		return token_new(TT_COLON);
 	case '"':
-		++ctx->lexer.src;
+		++ctx->lexer.begin;
 		return lex_rest_of_string(ctx);
 	case '\0':
 		return token_new(TT_EOF);
@@ -550,10 +544,10 @@ static JSONValue * value(Token t, Ctx * ctx) {
 	}
 }
 
-JSONValue * json_parse(const char * string, JSONAllocator allocator) {
+JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocator) {
 	Ctx ctx;
 	ctx.allocator = allocator;
-	ctx.lexer = lexer_new(string);
+	ctx.lexer = lexer_new(string, len);
 	return value(next_token(&ctx), &ctx);
 }
 
@@ -779,7 +773,7 @@ static void print_value(FILE * file, const JSONValue * value, size_t indent) {
 		fputs(json_value_as_bool(value) ? "true" : "false", file);
 		break;
 	case JSON_NUMBER:
-		fprintf(file, "%f", json_value_as_number(value));
+		fprintf(file, "%.17g", json_value_as_number(value));
 		break;
 	case JSON_STRING:
 		print_string(file, json_value_as_string(value));
@@ -812,7 +806,7 @@ void print_value_min(FILE * file, const JSONValue * value) {
 		fputs(json_value_as_bool(value) ? "true" : "false", file);
 		break;
 	case JSON_NUMBER:
-		fprintf(file, "%f", json_value_as_number(value));
+		fprintf(file, "%.17g", json_value_as_number(value));
 		break;
 	case JSON_STRING:
 		print_string(file, json_value_as_string(value));
