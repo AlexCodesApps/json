@@ -82,9 +82,12 @@ typedef struct {
 	const char * end;
 } Lexer;
 
+#define MAX_DOUBLE_DIGITS (3 + DBL_MANT_DIG - DBL_MIN_EXP)
+
 typedef struct {
 	Lexer lexer;
 	JSONAllocator allocator;
+	char double_buffer[MAX_DOUBLE_DIGITS];
 } Ctx;
 
 static void * ctx_reallocate(Ctx * ctx, void * old_alloc, size_t old_size, size_t new_size) {
@@ -278,20 +281,18 @@ error:
 	return ERROR_TOKEN;
 }
 
-#define MAX_DOUBLE_DIGITS (3 + DBL_MANT_DIG - DBL_MIN_EXP)
 static Token lex_number(Ctx * ctx) {
+	/* strtod requires a NULL terminated string */
 	const char * begin = ctx->lexer.begin;
 	const char * end;
 	ptrdiff_t len;
 	double value;
 	Token token;
-	/* strtod requires a NULL terminated string */
-	char buffer[MAX_DOUBLE_DIGITS + 1];
 	char * buffer_end;
 	for (;;) {
 		char c = lexer_peek(&ctx->lexer);
 		if (c_is_digit(c) || c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E') {
-			lexer_advance(&ctx->lexer);
+			++ctx->lexer.begin;
 			continue;
 		}
 		end = ctx->lexer.begin;
@@ -302,14 +303,14 @@ static Token lex_number(Ctx * ctx) {
 		/* float is too big */
 		return ERROR_TOKEN;
 	}
-	memcpy(buffer, begin, len);
-	buffer[len] = '\0';
+	memcpy(ctx->double_buffer, begin, len);
+	ctx->double_buffer[len] = '\0';
 	errno = 0;
-	value = strtod(buffer, &buffer_end);
+	value = strtod(ctx->double_buffer, &buffer_end);
 	if (errno) {
 		return ERROR_TOKEN;
 	}
-	ctx->lexer.begin = begin + (buffer_end - buffer);
+	ctx->lexer.begin = begin + (buffer_end - ctx->double_buffer);
 	token.type = TT_NUMBER;
 	token.as.number = value;
 	return token;
