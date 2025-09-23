@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 typedef struct JSONNumber JSONNumber;
 typedef struct JSONString JSONString;
@@ -277,16 +278,38 @@ error:
 	return ERROR_TOKEN;
 }
 
+#define MAX_DOUBLE_DIGITS (3 + DBL_MANT_DIG - DBL_MIN_EXP)
 static Token lex_number(Ctx * ctx) {
-	char * next;
+	const char * begin = ctx->lexer.begin;
+	const char * end;
+	ptrdiff_t len;
 	double value;
 	Token token;
+	/* strtod requires a NULL terminated string */
+	char buffer[MAX_DOUBLE_DIGITS + 1];
+	char * buffer_end;
+	for (;;) {
+		char c = lexer_peek(&ctx->lexer);
+		if (c_is_digit(c) || c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E') {
+			lexer_advance(&ctx->lexer);
+			continue;
+		}
+		end = ctx->lexer.begin;
+		break;
+	}
+	len = end - begin;
+	if (len > MAX_DOUBLE_DIGITS) {
+		/* float is too big */
+		return ERROR_TOKEN;
+	}
+	memcpy(buffer, begin, len);
+	buffer[len] = '\0';
 	errno = 0;
-	value = strtod(ctx->lexer.begin, &next);
+	value = strtod(buffer, &buffer_end);
 	if (errno) {
 		return ERROR_TOKEN;
 	}
-	ctx->lexer.begin = next;
+	ctx->lexer.begin = begin + (buffer_end - buffer);
 	token.type = TT_NUMBER;
 	token.as.number = value;
 	return token;
@@ -546,9 +569,15 @@ static JSONValue * value(Token t, Ctx * ctx) {
 
 JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocator) {
 	Ctx ctx;
+	JSONValue * _value;
 	ctx.allocator = allocator;
 	ctx.lexer = lexer_new(string, len);
-	return value(next_token(&ctx), &ctx);
+	_value = value(next_token(&ctx), &ctx);
+	if (next_token(&ctx).type != TT_EOF) {
+		json_free(_value, allocator);
+		_value = NULL;
+	}
+	return _value;
 }
 
 
