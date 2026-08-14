@@ -89,6 +89,13 @@ A function used as a ``JSONAllocatorCallback`` is expected to:
 A function used as a ``JSONAllocatorCallback`` is not expected to:
 1. Support being called with ``(_, NULL, _, 0)``
 
+# Bounded Parsing
+Bound JSON recursion depth with `json_parse_bounded`.
+```src
+JSONValue *json_parse_bounded(const char *string, ptrdiff_t len,
+                              int depth_limit, JSONAllocator allocator);
+```
+
 # Building
 Should be very straight forward to build. Assuming you have the library in the ``json`` folder, you could do:
 ```bash

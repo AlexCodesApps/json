@@ -47,6 +47,17 @@ JSONAllocator json_default_allocator(void);
  */
 JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocator);
 
+
+/**
+ * @brief tries to parse a string into a JSONValue
+ * @param string is the input that is to be parsed
+ * @param len is the length of the input; -1 indicates a NULL terminated string
+ * @param depth_limit is the maximum depth of the input; -1 indicates unbounded input
+ * @param allocator is the allocator used to allocate the entire JSONValue
+ * @return a pointer to the newly allocated JSONValue, or NULL on failure
+ */
+JSONValue *json_parse_bounded(const char *string, ptrdiff_t len, int depth_limit, JSONAllocator allocator);
+
 /**
  * @brief frees an allocated JSONValue (avoid calling if allocated with arena-like allocator)
  * @param value is a pointer to the JSONValue being freed

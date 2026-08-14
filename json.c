@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#include <limits.h>
+#include <locale.h>
 
 typedef struct JSONNumber JSONNumber;
 typedef struct JSONString JSONString;
@@ -85,9 +87,11 @@ typedef struct {
 #define MAX_DOUBLE_DIGITS (3 + DBL_MANT_DIG - DBL_MIN_EXP)
 
 typedef struct {
+	char double_buffer[MAX_DOUBLE_DIGITS];
 	Lexer lexer;
 	JSONAllocator allocator;
-	char double_buffer[MAX_DOUBLE_DIGITS];
+	int depth;
+	int depth_limit;
 } Ctx;
 
 static void * ctx_reallocate(Ctx * ctx, void * old_alloc, size_t old_size, size_t new_size) {
@@ -305,6 +309,14 @@ static Token lex_number(Ctx * ctx) {
 	}
 	memcpy(ctx->double_buffer, begin, len);
 	ctx->double_buffer[len] = '\0';
+	if (*localeconv()->decimal_point == ',') {
+		char * i;
+		for (i = ctx->double_buffer; *i; ++i) {
+			if (*i == '.') {
+				*i = ',';
+			}
+		}
+	}
 	errno = 0;
 	value = strtod(ctx->double_buffer, &buffer_end);
 	if (errno) {
@@ -428,6 +440,10 @@ static JSONObject * object(Ctx * ctx) {
 	size_t count = 0;
 	JSONObject * obj;
 	Token token;
+	if (ctx->depth_limit >= 0) {
+		if (ctx->depth++ >= ctx->depth_limit)
+			return NULL;
+	}
 	for (token = next_token(ctx); token.type != TT_RBRACE; token = next_token(ctx)) {
 		JSONValue * nvalue;
 		JSONValue ** new_values;
@@ -476,6 +492,8 @@ static JSONObject * object(Ctx * ctx) {
 			return NULL;
 		}
 	}
+	if (ctx->depth_limit >= 0)
+		--ctx->depth;
 	obj = ALLOC(ctx, JSONObject);
 	if (!obj) {
 		_object_free_strings(ctx, strings, count, 0);
@@ -495,6 +513,12 @@ static JSONArray * array(Ctx * ctx) {
 	size_t size = 0;
 	Token t;
 	size_t i;
+	if (ctx->depth_limit >= 0) {
+		if (ctx->depth == INT_MAX)
+			return NULL;
+		if (ctx->depth++ >= ctx->depth_limit)
+			return NULL;
+	}
 	for (t = next_token(ctx); t.type != TT_RBRACKET; t = next_token(ctx)) {
 		JSONValue ** nvalues;
 		JSONValue * nvalue = value(t, ctx);
@@ -517,6 +541,8 @@ static JSONArray * array(Ctx * ctx) {
 			goto error;
 		}
 	}
+	if (ctx->depth_limit >= 0)
+		--ctx->depth;
 	array = ALLOC(ctx, JSONArray);
 	if (!array) {
 		goto error;
@@ -569,10 +595,16 @@ static JSONValue * value(Token t, Ctx * ctx) {
 }
 
 JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocator) {
+	return json_parse_bounded(string, len, -1, allocator);
+}
+
+JSONValue * json_parse_bounded(const char * string, ptrdiff_t len, int depth_limit, JSONAllocator allocator) {
 	Ctx ctx;
 	JSONValue * _value;
 	ctx.allocator = allocator;
 	ctx.lexer = lexer_new(string, len);
+	ctx.depth = 0;
+	ctx.depth_limit = depth_limit;
 	_value = value(next_token(&ctx), &ctx);
 	if (next_token(&ctx).type != TT_EOF) {
 		json_free(_value, allocator);
@@ -580,7 +612,6 @@ JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocat
 	}
 	return _value;
 }
-
 
 JSONAllocator json_allocator_new(void * ctx, JSONAllocatorCallback callback) {
 	JSONAllocator allocator;
