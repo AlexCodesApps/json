@@ -56,7 +56,7 @@ JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocat
  * @param allocator is the allocator used to allocate the entire JSONValue
  * @return a pointer to the newly allocated JSONValue, or NULL on failure
  */
-JSONValue *json_parse_bounded(const char *string, ptrdiff_t len, int depth_limit, JSONAllocator allocator);
+JSONValue * json_parse_bounded(const char *string, ptrdiff_t len, int depth_limit, JSONAllocator allocator);
 
 /**
  * @brief frees an allocated JSONValue (avoid calling if allocated with arena-like allocator)

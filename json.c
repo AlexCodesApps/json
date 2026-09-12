@@ -441,6 +441,8 @@ static JSONObject * object(Ctx * ctx) {
 	JSONObject * obj;
 	Token token;
 	if (ctx->depth_limit >= 0) {
+		if (ctx->depth == INT_MAX)
+			return NULL;
 		if (ctx->depth++ >= ctx->depth_limit)
 			return NULL;
 	}
