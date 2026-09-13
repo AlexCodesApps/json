@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct JSONValue JSONValue;
 typedef struct JSONObject JSONObject;
 typedef struct JSONArray JSONArray;
@@ -98,5 +102,9 @@ int json_print(FILE * file, const JSONValue * value);
  * @return the file's status as ferror(file)
  */
 int json_print_minified(FILE * file, const JSONValue * value);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
