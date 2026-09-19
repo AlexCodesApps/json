@@ -51,7 +51,6 @@ JSONAllocator json_default_allocator(void);
  */
 JSONValue * json_parse(const char * string, ptrdiff_t len, JSONAllocator allocator);
 
-
 /**
  * @brief tries to parse a string into a JSONValue
  * @param string is the input that is to be parsed

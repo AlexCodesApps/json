@@ -678,7 +678,6 @@ void json_free(JSONValue * value, JSONAllocator allocator) {
 	}
 }
 
-
 JSONType json_value_type(const JSONValue * value) {
 	return value->type;
 }
