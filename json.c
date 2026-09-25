@@ -649,6 +649,7 @@ static void free_object(JSONObject * obj, JSONAllocator allocator) {
 }
 
 void json_free(JSONValue * value, JSONAllocator allocator) {
+	if (!value) return;
 	JSONArray * array;
 	JSONString * string;
 	size_t i;

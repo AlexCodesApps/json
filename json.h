@@ -63,7 +63,7 @@ JSONValue * json_parse_bounded(const char *string, ptrdiff_t len, int depth_limi
 
 /**
  * @brief frees an allocated JSONValue (avoid calling if allocated with arena-like allocator)
- * @param value is a pointer to the JSONValue being freed
+ * @param value is a pointer to the JSONValue being freed or NULL for a no-op
  * @param allocator is the allocator that will free the value (preferably be the same one that allocated it)
  */
 void json_free(JSONValue * value, JSONAllocator allocator);
